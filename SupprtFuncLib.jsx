@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2025/12/14
+// Ver.1.0 : 2025/12/27
 
 // https://ai-scripting.docsforadobe.dev/jsobjref/Document.html
 // http://www.openspc2.org/reibun/Illustrator/ref/index.html
