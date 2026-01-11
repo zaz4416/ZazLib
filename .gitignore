@@ -1,4 +1,7 @@
-._.gitignore
-._SupprtFuncLib.jsx
-._PaletteWindow.jsx
+### macOS ###
+# General
+.DS_Store
+.github/._workflows
 
+# Thumbnails
+._*
