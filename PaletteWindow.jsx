@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/01/13-a
+// Ver.1.0 : 2026/01/20
 
 
 // アプリケーションのバージョンを取得
@@ -41,6 +41,10 @@ function appVersion() {
 CPaletteWindow.prototype = {
 
     InitDialog: function(DlgName) {
+
+        // クラス名を設定する。 サブクラスから呼ばれると、サブクラス名が設定される。
+        this.m_InstanceName = this.constructor.name;
+
         // ダイアログ追加
         var Dlg = this.GetDlg();
         Dlg.text          = DlgName;
