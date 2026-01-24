@@ -1,6 +1,10 @@
 ﻿
+<<<<<<< HEAD
 // Ver.1.0 : 2026/01/24
 
+=======
+// Ver.1.0 : 2026/01/21
+>>>>>>> 74e562308f905681ab7ee5a9f54dd2ba2f614c81
 
 // アプリケーションのバージョンを取得
 function appVersion() {
@@ -65,10 +69,6 @@ function ClassInheritance(subClass, superClass) {
 CPaletteWindow.prototype = {
 
     InitDialog: function(DlgName) {
-
-        // クラス名を設定する。 サブクラスから呼ばれると、サブクラス名が設定される。
-        this.m_InstanceName = this.constructor.name;
-
         // ダイアログ追加
         var Dlg = this.GetDlg();
         Dlg.text          = DlgName;
@@ -76,10 +76,6 @@ CPaletteWindow.prototype = {
         Dlg.alignChildren = [ "fill", "fill" ];
         Dlg.opacity       = 0.7; // （不透明度）
         $.writeln( "ダイアログ[ "+DlgName+" ]を生成");
-    },
-
-    InitInstance: function(InstanceName) {
-        this.m_InstanceName = InstanceName;
     },
 
     GetDlg: function() {
@@ -148,7 +144,11 @@ CPaletteWindow.prototype = {
     CallFunc: function( FuncName ) {
         var bt = new BridgeTalk;
         bt.target = BridgeTalk.appSpecifier;
-        bt.body = this.m_InstanceName + "." + FuncName + "();";
+
+        // this.constructor.name にて、クラス名を取得する。 
+        // サブクラスから呼ばれると、サブクラス名を取得できる。
+        bt.body = this.constructor.name + "." + FuncName + "();";   // 静的メソッドを呼ぶ
+
         bt.send();
     },
 
