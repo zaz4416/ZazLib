@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/01/20
+// Ver.1.0 : 2026/01/24
 
 
 // アプリケーションのバージョンを取得
@@ -39,6 +39,9 @@ function ClassInheritance(subClass, superClass) {
 //----------------------------------------
   
  // CPaletteWindowのコンストラクタをここで定義
+
+ var _OriginalWindow = Window;
+
  function CPaletteWindow( ReSizeAble ) {
     $.writeln( "コンストラクタ_CPaletteWindow" );
 
@@ -147,5 +150,77 @@ CPaletteWindow.prototype = {
         bt.target = BridgeTalk.appSpecifier;
         bt.body = this.m_InstanceName + "." + FuncName + "();";
         bt.send();
+    },
+
+    LoadGUIfromJSX: function( GUI_JSX_Path ) {
+
+        var self = this;
+
+        // 1. 偽のコンストラクタ（既存のダイアログを返す）
+        var FakeWindow = function() {
+            $.writeln( "オーバーライドされたwindowを実行" );
+            return self.m_Dialog;
+        };
+        // オリジナルのWindowプロトタイプを継承させておく（instanceof対策）
+        FakeWindow.prototype = _OriginalWindow.prototype;
+
+        // 2. 外部ファイルのコードを文字列として読み込む
+        // ※ $.fileName を使うことで、このJSXファイルからの相対パスを正確に取得
+        var currentPath = new File($.fileName).path;
+        var guiFile = new File( GUI_JSX_Path) ;
+        
+        var guiCode = "";
+        if (guiFile.open("r")) {
+            guiCode = guiFile.read();
+            guiFile.close();
+        } else {
+            alert("GUI定義ファイルが見つかりません: " + guiFile.fullName);
+            return false;
+        }
+
+        // 3. 即時関数によるスコープの差し替え
+        // 第1引数に FakeWindow を渡すことで、guiCode 内の "new Window" が
+        // グローバルの Window ではなく、FakeWindow（= self.m_Dialog）を参照します
+        (function(Window) {
+            try {
+                // 1. guiCode から "var 変数名" をすべて抜き出す（正規表現）
+                var varNames = [];
+                var match;
+                // var の後ろにある単語を抽出する正規表現
+                var regex = /var\s+([a-zA-Z0-9_]+)/g;
+                while ((match = regex.exec(guiCode)) !== null) {
+                    varNames.push(match[1]);
+                }
+
+                // 2. 変数を外に引き出すための「エクスポート用コード」を生成
+                // eval の末尾で実行させ、定義された変数を return させる
+                var exportSnippet = "\n; (function(){ \n var __result = {};";
+                for (var i = 0; i < varNames.length; i++) {
+                    var v = varNames[i];
+                    // 変数が定義されている場合のみ、戻り値のオブジェクトに格納
+                    exportSnippet += "if(typeof " + v + " !== 'undefined') __result['" + v + "'] = " + v + ";\n";
+                }
+                exportSnippet += "return __result; \n })();";
+
+                // 3. 元のコードとエクスポートコードを合体させて eval を実行し、結果を受け取る
+                var extractedVars = eval(guiCode + exportSnippet);
+
+                // 4. 受け取った変数を一括で self (インスタンス) に紐付ける
+                for (var key in extractedVars) {
+                    if (extractedVars.hasOwnProperty(key)) {
+                        // button1, group1 などが自動的に self に登録される
+                        self[key] = extractedVars[key];
+                        $.writeln("LoadGUIfromJSX関数で、selfに追加: " + key); // デバッグ用
+                    }
+                }
+
+            } catch (e) {
+                alert("GUI実行エラー: " + e.message);
+                return false;
+            }
+        })(FakeWindow);
+
+        return true;
     }
+
 } // prototype
