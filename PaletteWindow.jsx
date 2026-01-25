@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/01/24
+// Ver.1.0 : 2026/01/25
 
 
 // アプリケーションのバージョンを取得
@@ -37,11 +37,9 @@ function ClassInheritance(subClass, superClass) {
 //----------------------------------------
 //  ベースクラス CPaletteWindow
 //----------------------------------------
-  
- // CPaletteWindowのコンストラクタをここで定義
 
  var _OriginalWindow = Window;
-
+ // CPaletteWindowのコンストラクタをここで定義
  function CPaletteWindow( ReSizeAble ) {
     $.writeln( "コンストラクタ_CPaletteWindow" );
 
@@ -57,6 +55,8 @@ function ClassInheritance(subClass, superClass) {
         this.m_Dialog = new Window( "palette", "", undefined, {resizeable: false} );
     }
 
+    // インスタンスのコンストラクタ（子クラス自身）の静的プロパティに保存することで、動的に静的プロパティを定義
+    this.constructor.self = this;
 }
 
 // CPaletteWindowのメソッドをここで定義
@@ -206,7 +206,7 @@ CPaletteWindow.prototype = {
                     if (extractedVars.hasOwnProperty(key)) {
                         // button1, group1 などが自動的に self に登録される
                         self[key] = extractedVars[key];
-                        $.writeln("LoadGUIfromJSX関数で、selfに追加: " + key); // デバッグ用
+                        $.writeln("GUIプロパティ追加: " + key); // デバッグ用
                     }
                 }
 
