@@ -1,6 +1,7 @@
 ﻿
 // Ver.1.0 : 2026/01/25
 
+$.localize = true;  // OSの言語に合わせてローカライズする
 
 // アプリケーションのバージョンを取得
 function appVersion() {
