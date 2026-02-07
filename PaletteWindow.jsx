@@ -104,12 +104,17 @@ function CGlobalArray(Max) {
 CGlobalArray.prototype.cloneInstance = function(obj) {
     if (obj === null || typeof obj !== "object") return obj;
 
-    // 1. プロトタイプを継承した新しいオブジェクトを作成
-    var F = function() {};
-    F.prototype = obj.constructor ? obj.constructor.prototype : Object.prototype;
-    var clone = new F();
+    var clone;
+    // constructor が存在し、それが Object ではない場合（独自クラスの場合）
+    if (obj.constructor && obj.constructor !== Object) {
+        var F = function() {};
+        F.prototype = obj.constructor.prototype;
+        clone = new F();
+        clone.constructor = obj.constructor; // constructorを復元
+    } else {
+        clone = {};
+    }
 
-    // 2. 自身のプロパティをコピー (Object.assignの代用)
     for (var key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             clone[key] = obj[key];
@@ -182,9 +187,23 @@ CGlobalArray.prototype.GetGlobalClass = function() {
 }
 
 
+/**
+ * $.global[self.storageKey] へのオブジェクトを返します
+ * @returns {オブジェクト} - $.global[self.storageKey] へのオブジェクト
+ */
 CGlobalArray.prototype.GetGlobalStorageKey = function() {
     var self = this;
     return $.global[self.storageKey];
+}
+
+
+/**
+ * $.global[self.storageKey][elf.OsbjectNo] へのオブジェクトを返します
+ * @returns {オブジェクト} - $.global[self.storageKey][elf.OsbjectNo] へのオブジェクト
+ */
+CGlobalArray.prototype.GetGlobalObject = function() {
+    var self = this;
+    return self.GetGlobalStorageKey()[self.ObjectNo];
 }
 
 
@@ -284,6 +303,11 @@ CGlobalArray.prototype.DeleteObject = function() {
 //  ・ベースとしたいクラスに限り、下記のようにまとめてメソッドを記述しても良い。
 //  ・サブクラスでは、個別にメソッドを記述すること。下記のようにまとめて記述してはいけない。
 CPaletteWindow.prototype = {
+
+    GetDialogObject: function() {
+        var self = this;
+        return self.m_ArrayOfObj.GetGlobalObject();
+    },
 
     DirectCallFunc: function( FuncName ) {
         var self = this;
