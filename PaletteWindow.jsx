@@ -70,8 +70,8 @@ function ClassInheritance(subClass, superClass) {
 function CGlobalArray(Max) {
     var self = this;
 
-    this.ObjectNo = -1;
-    this.MAX_INSTANCES = Max;
+    self.ObjectNo = -1;
+    self.MAX_INSTANCES = Max;
 
     // 1. 実行中のスクリプト名を取得（拡張子なし）
     var scriptName = decodeURI(File($.fileName).name).replace(/\.[^\.]+$/, "");
@@ -82,8 +82,17 @@ function CGlobalArray(Max) {
 
     // 3. ブラケット記法 [] を使って、動的に $.global のプロパティにアクセス
     if (!($.global[self.storageKey] instanceof Array)) {
+        $.writeln("$.global[self.storageKey] を新規に生成");
         $.global[self.storageKey] = [];
         $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
+    } else {
+        if ( $.global[self.storageKey].length > self.MAX_INSTANCES ) {
+            // なんからの理由で、this.MAX_INSTANCES を超える登録があった場合は、強制的にメモリ解放させる
+            $.writeln("$.global[self.storageKey] をすべて破棄して、新規に生成");
+            self.CloseAllInstances();
+            $.global[self.storageKey] = [];
+            $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
+        }
     }
 }
 
@@ -168,8 +177,14 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
  */
 CGlobalArray.prototype.GetGlobalClass = function() {
     var self = this;
-    var name = "$.global['" + self.storageKey + "'][" + self.ObjectNo + "].";
+    var name = "$.global['" + self.storageKey + "'][" + self.ObjectNo + "]";
     return name;
+}
+
+
+CGlobalArray.prototype.GetGlobalStorageKey = function() {
+    var self = this;
+    return $.global[self.storageKey];
 }
 
 
@@ -179,7 +194,7 @@ CGlobalArray.prototype.GetGlobalClass = function() {
 CGlobalArray.prototype.CloseAllInstances = function() {
     var self = this;
 
-    if ( $.global[self.storageKey] .length > 0 ) {
+    if ( $.global[self.storageKey].length > 0 ) {
         var instances = $.global[self.storageKey] ;
         for (var i = 0; i < instances.length; i++) {
             if (instances[i].m_Dialog) {
@@ -187,6 +202,56 @@ CGlobalArray.prototype.CloseAllInstances = function() {
             }
         }
         $.global[self.storageKey]  = []; // 配列をリセット
+    }
+}
+
+
+/**
+ * ObjectNoが指している配列を削除
+ */
+CGlobalArray.prototype.DeleteObject = function() {
+    var self = this;
+    var key  = self.GetGlobalStorageKey();
+    var idx  = self.ObjectNo;
+    if (key[idx]) {
+        var oldInst = key[idx];
+                
+        // オブジェクトの全プロパティを削除して参照を切る
+        for (var prop in oldInst) {
+            if (oldInst.hasOwnProperty(prop)) {
+                oldInst[prop] = null;
+            }
+        }
+        key[idx] = null; // 明示的にnullを代入
+
+        $.writeln(idx+"の配列をメモリ解放しました");
+
+        // 配列のすべてがnullの場合は、配列そのものを解放させる
+        {
+            var length = key.length;
+            var AllNullFlag = true;
+            for(var lp=0; lp<length; lp++) {
+                if ( key[lp] != null ) {
+                    AllNullFlag = false;
+                    break;
+                }
+            }
+
+            if ( AllNullFlag ) {
+                // 配列自体の参照を削除
+                // 単なる [] 代入より delete の方がメモリ解放が確実です
+                delete key;
+
+                $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
+                
+                // ガベージコレクションの強制実行
+                $.gc();
+
+                $.writeln("配列リセット");
+                //alert("配列リセット");
+            }
+        }
+
     }
 }
 
@@ -220,7 +285,7 @@ CGlobalArray.prototype.CloseAllInstances = function() {
 //  ・サブクラスでは、個別にメソッドを記述すること。下記のようにまとめて記述してはいけない。
 CPaletteWindow.prototype = {
 
-    CallFuncInGlobalArray: function( FuncName ) {
+    DirectCallFunc: function( FuncName ) {
         var self = this;
         var name = self.m_ArrayOfObj.GetGlobalClass() + FuncName;
         eval( name );  
@@ -231,7 +296,7 @@ CPaletteWindow.prototype = {
         if ( self.m_ArrayOfObj.ObjectNo >= 0 ) {
             var bt = new BridgeTalk;
             bt.target = BridgeTalk.appSpecifier;
-            bt.body   = self.m_ArrayOfObj.GetGlobalClass() + FuncName + "();";
+            bt.body   = self.m_ArrayOfObj.GetGlobalClass() + FuncName;
             bt.send();
         } else {
             alert("Undefine ObjectNo in CallFuncWithGlobalArray.");
@@ -244,20 +309,28 @@ CPaletteWindow.prototype = {
     },
 
     GetDlg: function() {
-        return ( this.m_Dialog );
+        var self = this;
+        return ( self.m_Dialog );
     },
 
     show: function() {
         var self = this;
         $.writeln( "ObjectNo is " + self.m_ArrayOfObj.ObjectNo + " in show()." );
-        self.CallFuncInGlobalArray( "m_Dialog.show()" );
+        self.DirectCallFunc( ".m_Dialog.show()" );
         $.writeln("ダイアログ表示");
     },
 
     close: function() {
         var self = this;
-        self.m_Dialog.close();
-        $.writeln("ダイアログ閉じた");
+        try{
+            self.m_Dialog.close();
+            $.writeln("ダイアログ閉じた");
+
+            //--- close後のメモリ解放 ---
+            self.m_ArrayOfObj.DeleteObject();
+        } catch(e) {
+            alert( e.message );
+        }
     },
 
     addEventListener: function( p1, p2 ) {
