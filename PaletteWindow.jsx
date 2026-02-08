@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/02/07
+// Ver.1.0 : 2026/02/08
 
 $.localize = true;  // OSの言語に合わせてローカライズする
 
@@ -67,20 +67,17 @@ function ClassInheritance(subClass, superClass) {
 //-----------------------------------
 
 // 1. コンストラクタ定義
-function CGlobalArray(Max) {
+function CGlobalArray(storageKey, maxCount) {
     var self = this;
 
-    self.ObjectNo = -1;
-    self.MAX_INSTANCES = Max;
+    self.ArrayIndex = -1;
+    self.MAX_INSTANCES = maxCount || 5;
 
-    // 1. 実行中のスクリプト名を取得（拡張子なし）
-    var scriptName = decodeURI(File($.fileName).name).replace(/\.[^\.]+$/, "");
+    // 1. グローバルに格納するためのユニークなキー名を作成
+    self.storageKey = "store_" + storageKey;
+    self.indexKey   = "idx_"   + storageKey;
 
-     // 2. グローバルに格納するためのユニークなキー名を作成
-    self.storageKey = "store_" + scriptName;
-    self.indexKey   = "idx_" + scriptName;
-
-    // 3. ブラケット記法 [] を使って、動的に $.global のプロパティにアクセス
+    // 2. ブラケット記法 [] を使って、動的に $.global のプロパティにアクセス
     if (!($.global[self.storageKey] instanceof Array)) {
         $.writeln("$.global[self.storageKey] を新規に生成");
         $.global[self.storageKey] = [];
@@ -163,7 +160,7 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     $.gc(); 
 
     // クローンを作成する前に、設定が必要なプロパティに値を入れる
-    newInst.m_ArrayOfObj.ObjectNo = idx;
+    newInst.m_ArrayOfObj.ArrayIndex = idx;
 
     // クローンを作成して、指定した位置に代入（上書き）
     $.global[self.storageKey] [idx] = newInst.m_ArrayOfObj.cloneInstance(newInst);
@@ -171,8 +168,8 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     // 次の書き込み位置を更新（MAX_INSTANCES に達したら 0 に戻る）
     $.global[self.indexKey  ]  = (idx + 1) % self.MAX_INSTANCES;
 
-    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ObjectNo + " (次回の書き込み先: " + $.global[self.indexKey]  + ")");
-    return newInst.m_ArrayOfObj.ObjectNo;;
+    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex + " (次回の書き込み先: " + $.global[self.indexKey]  + ")");
+    return newInst.m_ArrayOfObj.ArrayIndex;;
 }
 
 
@@ -182,7 +179,7 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
  */
 CGlobalArray.prototype.GetGlobalClass = function() {
     var self = this;
-    var name = "$.global['" + self.storageKey + "'][" + self.ObjectNo + "]";
+    var name = "$.global['" + self.storageKey + "'][" + self.ArrayIndex + "]";
     return name;
 }
 
@@ -203,7 +200,7 @@ CGlobalArray.prototype.GetGlobalStorageKey = function() {
  */
 CGlobalArray.prototype.GetGlobalObject = function() {
     var self = this;
-    return self.GetGlobalStorageKey()[self.ObjectNo];
+    return self.GetGlobalStorageKey()[self.ArrayIndex];
 }
 
 
@@ -226,12 +223,12 @@ CGlobalArray.prototype.CloseAllInstances = function() {
 
 
 /**
- * ObjectNoが指している配列を削除
+ * ArrayIndexが指している配列を削除
  */
 CGlobalArray.prototype.DeleteObject = function() {
     var self = this;
     var key  = self.GetGlobalStorageKey();
-    var idx  = self.ObjectNo;
+    var idx  = self.ArrayIndex;
     if (key[idx]) {
         var oldInst = key[idx];
                 
@@ -281,7 +278,7 @@ CGlobalArray.prototype.DeleteObject = function() {
 
  var _OriginalWindow = Window;
  // CPaletteWindowのコンストラクタをここで定義
- function CPaletteWindow( MaxInstance, ReSizeAble ) {
+ function CPaletteWindow( scriptName, MaxInstance, ReSizeAble ) {
     $.writeln( "コンストラクタ_CPaletteWindow" );
 
     if ( ReSizeAble ) {
@@ -293,7 +290,7 @@ CGlobalArray.prototype.DeleteObject = function() {
         this.m_Dialog = new Window( "palette", "", undefined, {resizeable: false} );
     }
 
-    this.m_ArrayOfObj = new CGlobalArray( MaxInstance );
+    this.m_ArrayOfObj = new CGlobalArray( scriptName, MaxInstance );
 
     // インスタンスのコンストラクタ（子クラス自身）の静的プロパティに保存することで、動的に静的プロパティを定義
     this.constructor.self = this;
@@ -304,56 +301,89 @@ CGlobalArray.prototype.DeleteObject = function() {
 //  ・サブクラスでは、個別にメソッドを記述すること。下記のようにまとめて記述してはいけない。
 CPaletteWindow.prototype = {
 
+    SetDialogTitle: function(title) {
+        if ( this.m_Dialog ) {
+            this.m_Dialog.text = title;
+        }
+    },
+
+    GetDialogTitle: function() {
+        if ( this.m_Dialog ) {
+            return this.m_Dialog.text;
+        }
+        return "";
+    },
+
+    GetGlobalIndex: function() {
+        if ( this.m_ArrayOfObj ) {
+            return  this.m_ArrayOfObj.ArrayIndex;
+        } else {
+            return -1;
+        }
+    },
+
+    GetGlobalDialog: function() {
+        if ( this.m_ArrayOfObj ) {
+            return this.m_ArrayOfObj.GetGlobalObject();
+        }
+        return null;
+    },
+
     GetDialogObject: function() {
-        var self = this;
-        return self.m_ArrayOfObj.GetGlobalObject();
+        if ( this.m_ArrayOfObj ) {
+            return this.m_ArrayOfObj.GetGlobalObject();
+        }
+        return null;
     },
 
     DirectCallFunc: function( FuncName ) {
-        var self = this;
-        var name = self.m_ArrayOfObj.GetGlobalClass() + FuncName;
-        eval( name );  
+        if ( this.m_ArrayOfObj ) {
+            eval( this.m_ArrayOfObj.GetGlobalClass() + FuncName ); 
+        } 
     },
 
     CallFunc: function( FuncName ) {
-        var self = this;
-        if ( self.m_ArrayOfObj.ObjectNo >= 0 ) {
+        if ( this.m_ArrayOfObj && this.m_ArrayOfObj.ArrayIndex >= 0 ) {
             var bt = new BridgeTalk;
             bt.target = BridgeTalk.appSpecifier;
-            bt.body   = self.m_ArrayOfObj.GetGlobalClass() + FuncName;
+            bt.body   = this.m_ArrayOfObj.GetGlobalClass() + FuncName;
             bt.send();
         } else {
-            alert("Undefine ObjectNo in CallFuncWithGlobalArray.");
+            alert("Undefine ArrayIndex in CallFuncWithGlobalArray.");
         }
     },
 
     RegisterInstance: function() {
-        var self = this;
-        self.m_ArrayOfObj.RegisterInstance( self );
+        if ( this.m_ArrayOfObj ) {
+            this.m_ArrayOfObj.RegisterInstance( this );
+        }
     },
 
     GetDlg: function() {
-        var self = this;
-        return ( self.m_Dialog );
+        if (this.m_Dialog) {
+            return ( this.m_Dialog );
+        }
+        return null;
     },
 
     show: function() {
-        var self = this;
-        $.writeln( "ObjectNo is " + self.m_ArrayOfObj.ObjectNo + " in show()." );
-        self.DirectCallFunc( ".m_Dialog.show()" );
-        $.writeln("ダイアログ表示");
+        var GlobalDlg = this.GetGlobalDialog();
+        if (GlobalDlg && GlobalDlg.m_Dialog) {
+            GlobalDlg.m_Dialog.center(); // 中央に表示
+            GlobalDlg.m_Dialog.show();
+            $.writeln("show()");
+        } else {
+            $.writeln("Error: Global instance not found for show().");
+        }
     },
 
     close: function() {
-        var self = this;
-        try{
-            self.m_Dialog.close();
-            $.writeln("ダイアログ閉じた");
+        if ( this.m_ArrayOfObj && this.m_Dialog) {
+            var GlobalDlg = this.GetGlobalDialog();
+            GlobalDlg.m_Dialog.close();
 
             //--- close後のメモリ解放 ---
-            self.m_ArrayOfObj.DeleteObject();
-        } catch(e) {
-            alert( e.message );
+            this.m_ArrayOfObj.DeleteObject();
         }
     },
 
