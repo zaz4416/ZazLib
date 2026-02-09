@@ -62,6 +62,67 @@ function ClassInheritance(subClass, superClass) {
 
 
 //-----------------------------------
+// クラス CControlIndex
+//-----------------------------------
+
+// 1. コンストラクタ定義
+function CControlIndex(storageKey, Max) {
+    var self = this;
+    self.MAX_INSTANCES = Max;
+    self.indexKey = "idx_"   + storageKey;
+
+    // $.global[self.indexKey] が未定義の時にだけ、初期化
+    if ( $.global[self.indexKey] === undefined ) {
+        self.Init();
+    }
+}
+
+// 初期化
+CControlIndex.prototype.Init = function() {
+    var self = this;
+    $.global[self.indexKey] = [];
+    for ( lp=self.MAX_INSTANCES-1; lp>=0; lp-- ) {
+        $.global[self.indexKey].push(lp);
+    }
+}
+
+// インデックスを得る
+CControlIndex.prototype.GetIndex = function( Max ) {
+    var self = this;
+    var index = -1;
+
+    // 配列が存在し、かつ中身がある間だけ実行
+    if ( $.global[self.indexKey] !== undefined && $.global[self.indexKey].length > 0 ) {
+        index = $.global[self.indexKey].pop();
+    }
+
+    return index;
+}
+
+// 登録可能か
+CControlIndex.prototype.Is_it_possible_to_register = function() {
+    var self = this;
+
+    // 配列が存在し、かつ中身がある間だけ実行
+    if ( $.global[self.indexKey] === undefined ) {
+        return false;
+    } else {
+        if ( $.global[self.indexKey].length == 0 ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// インデックスが破棄された
+CControlIndex.prototype.DeleteIndex = function( idx ) {
+    var self = this;
+    $.global[self.indexKey].push( idx );
+}
+
+
+//-----------------------------------
 // クラス CGlobalArray
 //-----------------------------------
 
@@ -92,6 +153,13 @@ function CGlobalArray(storageKey, maxCount) {
         }
     }
 }
+
+
+CGlobalArray.prototype.Is_it_possible_to_register = function(obj) {
+    var self = this;
+    return self.m_ControlIndex.Is_it_possible_to_register();
+}
+
 
 /**
  * オブジェクトのプロトタイプを継承しつつ、プロパティをコピーする（ES3互換）
@@ -132,41 +200,47 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     // newInstのプロパティに登録させたい値があれば、pushする前に、ここですること！！
     var idx = self.m_ControlIndex.GetIndex();
 
-    // --- 上書き前の解放処理 ---
-    if ($.global[self.storageKey] [idx]) {
-        var oldInst = $.global[self.storageKey] [idx];
-        
-        // UI（ダイアログ）を閉じて破棄
-        if (oldInst.m_Dialog) {
-            try {
-                oldInst.m_Dialog.close();
-                oldInst.m_Dialog = null; 
-            } catch(e) {
-                $.writeln("Previous dialog close failed: " + e);
+    if ( idx != -1 ) {
+        // --- 上書き前の解放処理 ---
+        if ($.global[self.storageKey] [idx]) {
+            var oldInst = $.global[self.storageKey] [idx];
+            
+            // UI（ダイアログ）を閉じて破棄
+            if (oldInst.m_Dialog) {
+                try {
+                    oldInst.m_Dialog.close();
+                    oldInst.m_Dialog = null; 
+                } catch(e) {
+                    $.writeln("Previous dialog close failed: " + e);
+                }
             }
-        }
-        
-        // オブジェクトの全プロパティを削除して参照を切る
-        for (var prop in oldInst) {
-            if (oldInst.hasOwnProperty(prop)) {
-                oldInst[prop] = null;
+            
+            // オブジェクトの全プロパティを削除して参照を切る
+            for (var prop in oldInst) {
+                if (oldInst.hasOwnProperty(prop)) {
+                    oldInst[prop] = null;
+                }
             }
+            $.global[self.storageKey] [idx] = null; // 明示的にnullを代入
         }
-        $.global[self.storageKey] [idx] = null; // 明示的にnullを代入
+
+        // --- ガベージコレクションの実行 ---
+        // 参照が切れたメモリを即座に回収対象にする
+        $.gc(); 
+
+        // クローンを作成する前に、設定が必要なプロパティに値を入れる
+        newInst.m_ArrayOfObj.ArrayIndex = idx;
+
+        // クローンを作成して、指定した位置に代入（上書き）
+        $.global[self.storageKey] [idx] = newInst.m_ArrayOfObj.cloneInstance(newInst);
+
+        $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex);
+        return newInst.m_ArrayOfObj.ArrayIndex;
+    } else {
+        alert("Undefine Dialog")
     }
 
-    // --- ガベージコレクションの実行 ---
-    // 参照が切れたメモリを即座に回収対象にする
-    $.gc(); 
-
-    // クローンを作成する前に、設定が必要なプロパティに値を入れる
-    newInst.m_ArrayOfObj.ArrayIndex = idx;
-
-    // クローンを作成して、指定した位置に代入（上書き）
-    $.global[self.storageKey] [idx] = newInst.m_ArrayOfObj.cloneInstance(newInst);
-
-    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex);
-    return newInst.m_ArrayOfObj.ArrayIndex;;
+    return -1;
 }
 
 
@@ -278,18 +352,23 @@ CGlobalArray.prototype.DeleteObject = function() {
  var _OriginalWindow = Window;
  // CPaletteWindowのコンストラクタをここで定義
  function CPaletteWindow( scriptName, MaxInstance, ReSizeAble ) {
-    $.writeln( "コンストラクタ_CPaletteWindow" );
-
-    if ( ReSizeAble ) {
-        // リサイズ可能なダイアログを生成
-        this.m_Dialog = new Window( "palette", "", undefined, {resizeable: true} );
-    }
-    else{
-        // リサイズ固定なダイアログを生成        
-        this.m_Dialog = new Window( "palette", "", undefined, {resizeable: false} );
-    }
 
     this.m_ArrayOfObj = new CGlobalArray( scriptName, MaxInstance );
+
+    if ( this.Is_it_possible_to_register() ) {
+        $.writeln( "コンストラクタ_CPaletteWindow" );
+
+        if ( ReSizeAble ) {
+            // リサイズ可能なダイアログを生成
+            this.m_Dialog = new Window( "palette", "", undefined, {resizeable: true} );
+        }
+        else{
+            // リサイズ固定なダイアログを生成        
+            this.m_Dialog = new Window( "palette", "", undefined, {resizeable: false} );
+        }
+    } else {
+        this.m_Dialog = null;
+    }
 
     // インスタンスのコンストラクタ（子クラス自身）の静的プロパティに保存することで、動的に静的プロパティを定義
     this.constructor.self = this;
@@ -335,10 +414,22 @@ CPaletteWindow.prototype = {
         return null;
     },
 
+    IsGetDlg: function() {
+        if (this.m_Dialog!= null) {
+            return true;
+        }
+        return false;
+    },
+
     DirectCallFunc: function( FuncName ) {
         if ( this.m_ArrayOfObj ) {
             eval( this.m_ArrayOfObj.GetGlobalClass() + FuncName ); 
         } 
+    },
+
+    Is_it_possible_to_register: function() {
+        var self = this;
+        return self.m_ArrayOfObj.Is_it_possible_to_register();
     },
 
     CallFunc: function( FuncName ) {
@@ -354,7 +445,7 @@ CPaletteWindow.prototype = {
 
     RegisterInstance: function() {
         if ( this.m_ArrayOfObj ) {
-            this.m_ArrayOfObj.RegisterInstance( this );
+            return this.m_ArrayOfObj.RegisterInstance( this );
         }
     },
 
