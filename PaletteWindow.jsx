@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/02/08
+// Ver.1.0 : 2026/02/09
 
 $.localize = true;  // OSの言語に合わせてローカライズする
 
@@ -61,7 +61,6 @@ function ClassInheritance(subClass, superClass) {
 // ---------------------------------------------------------------------------------
 
 
-
 //-----------------------------------
 // クラス CGlobalArray
 //-----------------------------------
@@ -72,23 +71,24 @@ function CGlobalArray(storageKey, maxCount) {
 
     self.ArrayIndex = -1;
     self.MAX_INSTANCES = maxCount || 5;
+    self.m_ControlIndex = new CControlIndex( storageKey, self.MAX_INSTANCES );
 
     // 1. グローバルに格納するためのユニークなキー名を作成
     self.storageKey = "store_" + storageKey;
-    self.indexKey   = "idx_"   + storageKey;
+
 
     // 2. ブラケット記法 [] を使って、動的に $.global のプロパティにアクセス
     if (!($.global[self.storageKey] instanceof Array)) {
         $.writeln("$.global[self.storageKey] を新規に生成");
+        self.m_ControlIndex.Init();
         $.global[self.storageKey] = [];
-        $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
     } else {
         if ( $.global[self.storageKey].length > self.MAX_INSTANCES ) {
             // なんからの理由で、this.MAX_INSTANCES を超える登録があった場合は、強制的にメモリ解放させる
             $.writeln("$.global[self.storageKey] をすべて破棄して、新規に生成");
             self.CloseAllInstances();
+            self.m_ControlIndex.Init();
             $.global[self.storageKey] = [];
-            $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
         }
     }
 }
@@ -130,7 +130,7 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     var self = this;
 
     // newInstのプロパティに登録させたい値があれば、pushする前に、ここですること！！
-    var idx = $.global[ self.indexKey ] ;
+    var idx = self.m_ControlIndex.GetIndex();
 
     // --- 上書き前の解放処理 ---
     if ($.global[self.storageKey] [idx]) {
@@ -165,10 +165,7 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     // クローンを作成して、指定した位置に代入（上書き）
     $.global[self.storageKey] [idx] = newInst.m_ArrayOfObj.cloneInstance(newInst);
 
-    // 次の書き込み位置を更新（MAX_INSTANCES に達したら 0 に戻る）
-    $.global[self.indexKey  ]  = (idx + 1) % self.MAX_INSTANCES;
-
-    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex + " (次回の書き込み先: " + $.global[self.indexKey]  + ")");
+    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex + ")");
     return newInst.m_ArrayOfObj.ArrayIndex;;
 }
 
@@ -257,8 +254,7 @@ CGlobalArray.prototype.DeleteObject = function() {
                 // 配列自体の参照を削除
                 // 単なる [] 代入より delete の方がメモリ解放が確実です
                 delete key;
-
-                $.global[self.indexKey  ] = 0;       // 次に書き込むインデックスを管理
+                self.m_ControlIndex.Init();
                 
                 // ガベージコレクションの強制実行
                 $.gc();
