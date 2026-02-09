@@ -165,7 +165,7 @@ CGlobalArray.prototype.RegisterInstance = function(newInst) {
     // クローンを作成して、指定した位置に代入（上書き）
     $.global[self.storageKey] [idx] = newInst.m_ArrayOfObj.cloneInstance(newInst);
 
-    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex + ")");
+    $.writeln("オブジェクト登録完了。No: " + newInst.m_ArrayOfObj.ArrayIndex);
     return newInst.m_ArrayOfObj.ArrayIndex;;
 }
 
@@ -237,6 +237,8 @@ CGlobalArray.prototype.DeleteObject = function() {
         }
         key[idx] = null; // 明示的にnullを代入
 
+        self.m_ControlIndex.DeleteIndex(idx);
+
         $.writeln(idx+"の配列をメモリ解放しました");
 
         // 配列のすべてがnullの場合は、配列そのものを解放させる
@@ -251,6 +253,7 @@ CGlobalArray.prototype.DeleteObject = function() {
             }
 
             if ( AllNullFlag ) {
+                //alert("配列をすべて消す");
                 // 配列自体の参照を削除
                 // 単なる [] 代入より delete の方がメモリ解放が確実です
                 delete key;
