@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/02/09
+// Ver.1.0 : 2026/02/10
 
 $.localize = true;  // OSの言語に合わせてローカライズする
 
@@ -352,26 +352,20 @@ CGlobalArray.prototype.DeleteObject = function() {
  var _OriginalWindow = Window;
  // CPaletteWindowのコンストラクタをここで定義
  function CPaletteWindow( scriptName, MaxInstance, ReSizeAble ) {
+    var self = this;
+    self.m_Dialog = null;
+    self.m_ArrayOfObj = new CGlobalArray( scriptName, MaxInstance );
 
-    this.m_ArrayOfObj = new CGlobalArray( scriptName, MaxInstance );
-
-    if ( this.Is_it_possible_to_register() ) {
+    if ( self.Is_it_possible_to_register() ) {
         $.writeln( "コンストラクタ_CPaletteWindow" );
-
-        if ( ReSizeAble ) {
-            // リサイズ可能なダイアログを生成
-            this.m_Dialog = new Window( "palette", "", undefined, {resizeable: true} );
-        }
-        else{
-            // リサイズ固定なダイアログを生成        
-            this.m_Dialog = new Window( "palette", "", undefined, {resizeable: false} );
-        }
+        var resizableProp = { resizeable: ReSizeAble };
+        self.m_Dialog = new Window("palette", scriptName, undefined, resizableProp);
     } else {
-        this.m_Dialog = null;
+        self.m_ArrayOfObj = null;
     }
 
     // インスタンスのコンストラクタ（子クラス自身）の静的プロパティに保存することで、動的に静的プロパティを定義
-    this.constructor.self = this;
+    self.constructor.self = self;
 }
 
 // CPaletteWindowのメソッドをここで定義
@@ -380,50 +374,57 @@ CGlobalArray.prototype.DeleteObject = function() {
 CPaletteWindow.prototype = {
 
     SetDialogTitle: function(title) {
-        if ( this.m_Dialog ) {
-            this.m_Dialog.text = title;
+        var self = this;
+        if ( self.m_Dialog ) {
+            self.m_Dialog.text = title;
         }
     },
 
     GetDialogTitle: function() {
-        if ( this.m_Dialog ) {
-            return this.m_Dialog.text;
+        var self = this;
+        if ( self.m_Dialog ) {
+            return self.m_Dialog.text;
         }
         return "";
     },
 
     GetGlobalIndex: function() {
-        if ( this.m_ArrayOfObj ) {
-            return  this.m_ArrayOfObj.ArrayIndex;
+        var self = this;
+        if ( self.m_ArrayOfObj ) {
+            return  self.m_ArrayOfObj.ArrayIndex;
         } else {
             return -1;
         }
     },
 
     GetGlobalDialog: function() {
-        if ( this.m_ArrayOfObj ) {
-            return this.m_ArrayOfObj.GetGlobalObject();
+        var self = this;
+        if ( self.m_ArrayOfObj ) {
+            return self.m_ArrayOfObj.GetGlobalObject();
         }
         return null;
     },
 
     GetDialogObject: function() {
-        if ( this.m_ArrayOfObj ) {
-            return this.m_ArrayOfObj.GetGlobalObject();
+        var self = this;
+        if ( self.m_ArrayOfObj ) {
+            return self.m_ArrayOfObj.GetGlobalObject();
         }
         return null;
     },
 
-    IsGetDlg: function() {
-        if (this.m_Dialog!= null) {
+    IsDialg: function() {
+        var self = this;
+        if (self.m_Dialog!= null) {
             return true;
         }
         return false;
     },
 
     DirectCallFunc: function( FuncName ) {
-        if ( this.m_ArrayOfObj ) {
-            eval( this.m_ArrayOfObj.GetGlobalClass() + FuncName ); 
+        var self = this;
+        if ( self.m_ArrayOfObj ) {
+            eval( self.m_ArrayOfObj.GetGlobalClass() + FuncName ); 
         } 
     },
 
@@ -433,10 +434,11 @@ CPaletteWindow.prototype = {
     },
 
     CallFunc: function( FuncName ) {
-        if ( this.m_ArrayOfObj && this.m_ArrayOfObj.ArrayIndex >= 0 ) {
+            var self = this;
+        if ( self.m_ArrayOfObj && self.m_ArrayOfObj.ArrayIndex >= 0 ) {
             var bt = new BridgeTalk;
             bt.target = BridgeTalk.appSpecifier;
-            bt.body   = this.m_ArrayOfObj.GetGlobalClass() + FuncName;
+            bt.body   = self.m_ArrayOfObj.GetGlobalClass() + FuncName;
             bt.send();
         } else {
             alert("Undefine ArrayIndex in CallFuncWithGlobalArray.");
@@ -444,20 +446,23 @@ CPaletteWindow.prototype = {
     },
 
     RegisterInstance: function() {
-        if ( this.m_ArrayOfObj ) {
-            return this.m_ArrayOfObj.RegisterInstance( this );
+        var self = this;
+        if ( self.m_ArrayOfObj ) {
+            return self.m_ArrayOfObj.RegisterInstance( self );
         }
     },
 
     GetDlg: function() {
-        if (this.m_Dialog) {
-            return ( this.m_Dialog );
+        var self = this;
+        if (self.m_Dialog) {
+            return ( self.m_Dialog );
         }
         return null;
     },
 
     show: function() {
-        var GlobalDlg = this.GetGlobalDialog();
+        var self = this;
+        var GlobalDlg = self.GetGlobalDialog();
         if (GlobalDlg && GlobalDlg.m_Dialog) {
             GlobalDlg.m_Dialog.center(); // 中央に表示
             GlobalDlg.m_Dialog.show();
@@ -468,56 +473,64 @@ CPaletteWindow.prototype = {
     },
 
     close: function() {
-        if ( this.m_ArrayOfObj && this.m_Dialog) {
-            var GlobalDlg = this.GetGlobalDialog();
+        var self = this;
+        if ( self.m_ArrayOfObj && self.m_Dialog) {
+            var GlobalDlg = self.GetGlobalDialog();
             GlobalDlg.m_Dialog.close();
 
             //--- close後のメモリ解放 ---
-            this.m_ArrayOfObj.DeleteObject();
+            self.m_ArrayOfObj.DeleteObject();
         }
     },
 
     addEventListener: function( p1, p2 ) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         return Dlg.addEventListener( p1, p2 );
     },
 
     AddPanel: function(Text) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var PanelText = Dlg.add( "panel") ;
         return PanelText;
     },
 
     AddRadioButton: function(Text) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var RadioButtonText = Dlg.add( "radiobutton") ;
         RadioButtonText.text = Text;
         return RadioButtonText;
     },
 
     AddEditText: function(Text) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var EdText = Dlg.add( "edittext") ;
         EdText.text = Text;
         return EdText;
     },
 
     AddStaticText: function(Text) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var StText = Dlg.add( "statictext") ;
         StText.text = Text;
         return StText;
     },
 
     AddButton: function(Text) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var Btn = Dlg.add( "button") ;
         Btn.text = Text;
         return Btn;
     },
 
     AddChkBox: function(Text, Value) {
-        var Dlg = this.GetDlg();
+        var self = this;
+        var Dlg = self.GetDlg();
         var ChkBox = Dlg.add("checkbox",undefined, "");
         ChkBox.text = Text;
         ChkBox.value = Value;
@@ -525,7 +538,6 @@ CPaletteWindow.prototype = {
     },
 
     LoadGUIfromJSX: function( GUI_JSX_Path ) {
-
         var self = this;
 
         // 1. 偽のコンストラクタ（既存のダイアログを返す）
@@ -585,13 +597,11 @@ CPaletteWindow.prototype = {
                         $.writeln("GUIプロパティ追加: " + key); // デバッグ用
                     }
                 }
-
             } catch (e) {
                 alert("GUI実行エラー: " + e.message);
                 return false;
             }
         })(FakeWindow);
-
         return true;
     }
 
