@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         # 更新を飛ばしたいリポジトリのリスト
-        repo: ['zaz4416/ImageViewer_for_Adobe_Illustrator.git', 'zaz4416/Hellow_World_for_Adobe_Illustrator.git']
+        repo: ['zaz4416/ImageViewer_for_Adobe_Illustrator', 'zaz4416/Hellow_World_for_Adobe_Illustrator']
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
