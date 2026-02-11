@@ -16,6 +16,6 @@ jobs:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.PAT_TOKEN }} # repo権限を持つPAT
+          token: ${{ secrets.MY_PAT }} # repo権限を持つPAT
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
