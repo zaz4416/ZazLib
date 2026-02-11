@@ -1,7 +1,8 @@
 ﻿name: Notify Projects
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ] # mainでもmasterでも動くようにする
+  workflow_dispatch: # ★これでブラウザから手動実行できるかテストできる
 
 jobs:
   dispatch:
@@ -9,15 +10,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 同期先の全リポジトリリスト
-        repo: 
-          - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
+        repo: ['zaz4416/ImageViewer_for_Adobe_Illustrator', 'zaz4416/Hellow_World_for_Adobe_Illustrator']
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.MY_PAT }}
+          token: ${{ secrets.PAT_TOKEN }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
-          # 通知先に「送信先リポジトリ名」をデータとして渡す
           client-payload: '{"target_repo": "${{ matrix.repo }}"}'
