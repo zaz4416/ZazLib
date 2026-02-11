@@ -7,12 +7,10 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     strategy:
-      # ★ここを追加！1つ失敗しても他を止めない設定
       fail-fast: false
       matrix:
         repo: 
           - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
-          # 今後増えるプロジェクトをここに追加していく
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
@@ -20,4 +18,7 @@ jobs:
           token: ${{ secrets.MY_PAT }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
+          # ★ここを追加：通知先に「お前の名前はこれだ」と教える
+          client-payload: '{"target_repo": "${{ matrix.repo }}"}'
+
         
