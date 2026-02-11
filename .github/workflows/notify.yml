@@ -11,6 +11,7 @@ jobs:
       matrix:
         # 同期先のプロジェクトリポジトリをすべてリストアップ
         repo: 
+          - 'zaz4416/ImageViewer_for_Adobe_Illustrator'
           - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
     steps:
       - name: Repository Dispatch
