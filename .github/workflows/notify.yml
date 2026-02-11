@@ -1,22 +1,23 @@
 ﻿name: Notify Projects
 on:
   push:
-    branches: [ main ] # 共通リポジトリのメインブランチ名
+    branches: [ main ]
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # 1つ失敗しても他を止めない
+      # ★ここを追加！1つ失敗しても他を止めない設定
+      fail-fast: false
       matrix:
-        # 同期先のプロジェクトリポジトリをすべてリストアップ
         repo: 
-          - 'zaz4416/ImageViewer_for_Adobe_Illustrator'
           - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
+          # 今後増えるプロジェクトをここに追加していく
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.MY_PAT }} # repo権限を持つPAT
+          token: ${{ secrets.MY_PAT }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
+        
