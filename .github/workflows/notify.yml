@@ -3,7 +3,9 @@ on:
   push:
     branches: [ main ]
   repository_dispatch:
-    types: [project_contribution] # プロジェクトからの逆流用
+    types: [project_contribution]
+  # ★ここを追加：手動実行を許可する
+  workflow_dispatch:
 
 jobs:
   dispatch:
@@ -18,10 +20,11 @@ jobs:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.MY_PAT }}
+          token: ${{ secrets.PAT_TOKEN }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
-          # 送信元情報をリレーする。直接ZazLibを直した場合は 'zaz4416/ZazLib' を送る
+          # 手動実行時、github.event.client_payload.target_repo は空になるため、
+          # その場合は ZazLib 自身を送信元として扱う
           client-payload: >
             {
               "target_repo": "${{ github.event.client_payload.target_repo || github.repository }}"
