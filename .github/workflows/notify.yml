@@ -16,6 +16,8 @@ jobs:
         repo: 
           - 'zaz4416/ImageViewer_for_Adobe_Illustrator'
           - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
+          - 'zaz4416/Panele_Paint_for_Adobe_Illustrator'
+          - 'zaz4416/Panele_LivePaint_for_Adobe_Illustrator'
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
