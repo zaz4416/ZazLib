@@ -1,8 +1,9 @@
 ﻿name: Notify Projects
 on:
   push:
-    branches: [ main, master ] # mainでもmasterでも動くようにする
-  workflow_dispatch: # ★これでブラウザから手動実行できるかテストできる
+    branches: [ main ]
+  repository_dispatch:
+    types: [project_contribution] # プロジェクトからの逆流用
 
 jobs:
   dispatch:
@@ -10,7 +11,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: ['zaz4416/ImageViewer_for_Adobe_Illustrator', 'zaz4416/Hellow_World_for_Adobe_Illustrator']
+        repo: 
+          - 'zaz4416/ImageViewer_for_Adobe_Illustrator'
+          - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
@@ -18,4 +21,8 @@ jobs:
           token: ${{ secrets.MY_PAT }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
-          client-payload: '{"target_repo": "${{ matrix.repo }}"}'
+          # 送信元情報をリレーする。直接ZazLibを直した場合は 'zaz4416/ZazLib' を送る
+          client-payload: >
+            {
+              "target_repo": "${{ github.event.client_payload.target_repo || github.repository }}"
+            }
