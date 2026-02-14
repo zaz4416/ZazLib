@@ -5,7 +5,7 @@ on:
   repository_dispatch:
     types: [project_contribution]
   # ★ここを追加：手動実行を許可する
-  #workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   dispatch:
