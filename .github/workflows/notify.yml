@@ -1,32 +1,46 @@
 ﻿name: Notify Projects
 on:
+  # 1. 共通リポジトリ(ZazLib)のメインブランチが更新された時に起動
   push:
     branches: [ main ]
+    # zazlibのプログラム本体（.jsx等）が変更された時だけ通知を飛ばす設定
+    paths:
+      - '**.jsx'
+      - '**.js'
+      - 'zazlib/**'
+    # 設定ファイルやREADMEの変更では通知を飛ばさない（無駄な実行を防止）
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'README.md'
+
+  # 2. 各プロジェクト側から「逆流通知」が届いた時に起動
   repository_dispatch:
     types: [project_contribution]
-  # ★ここを追加：手動実行を許可する
-  workflow_dispatch:
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     strategy:
+      # どれか1つのリポジトリでエラー（名前間違い等）が起きても、他の送信を止めない
       fail-fast: false
       matrix:
+        # 同期対象のプロジェクトリポジトリ一覧
         repo: 
           - 'zaz4416/ImageViewer_for_Adobe_Illustrator'
           - 'zaz4416/Hellow_World_for_Adobe_Illustrator'
           - 'zaz4416/Panele_Paint_for_Adobe_Illustrator'
           - 'zaz4416/Panele_LivePaint_for_Adobe_Illustrator'
+
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
+          # ★トークンの名前を MY_PAT に変更（最強の合鍵：Classic PAT / repo全チェック）
           token: ${{ secrets.MY_PAT }}
           repository: ${{ matrix.repo }}
           event-type: common_lib_updated
-          # 手動実行時、github.event.client_payload.target_repo は空になるため、
-          # その場合は ZazLib 自身を送信元として扱う
+          # 送信元情報をリレーする仕組み
+          # プロジェクトからの逆流ならそのリポジトリ名を、直接修正なら ZazLib(自分)の名前を渡す
           client-payload: >
             {
               "target_repo": "${{ github.event.client_payload.target_repo || github.repository }}"
