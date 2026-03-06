@@ -5,13 +5,11 @@
 */
 
 
-// Ver.1.0 : 2026/03/05
+// Ver.1.0 : 2026/03/06
 
 
 // ディスプレイのスケーリング倍率を保存する
 var _UIScale = 1.25; // デフォルト値（例: 1.25）。後で getUIScale 関数で上書きされる予定 
-
-#include "CLoupePalette.jsx"    // 拡大鏡のクラス
 
 
 // --- グローバル関数 -----------------------------------------------------------------
@@ -234,8 +232,6 @@ function CViewer(pObj, pDialog, pPanelView, imageFile) {
     self.m_Image     = null;            // 画像のオリジナルサイズ {width, height, ratio} を保持するオブジェクト
     self.mousePos    = { x: 0, y: 0 };  // マウスのローカル座標を保存するオブジェクト
     self.m_UIScale   = _UIScale;        // ディスプレイのスケーリング倍率を保存する
-    self.m_Loupe = null;
-    self.m_CanvasPos = null;
 
     try{
         self.m_Image = getImageSize(imageFile);
@@ -283,34 +279,6 @@ function CViewer(pObj, pDialog, pPanelView, imageFile) {
             //self.m_Canvas.alignment = ["fill", "fill"];
             self.m_Canvas.size    = [ pDialog.preferredSize.width, pDialog.preferredSize.height ]; // ビューアの初期サイズ
 
-
-            // 移動イベントを監視
-            pDialog.onMove = function() {
-
-                // 現在のウィンドウ位置を取得
-                var currentWinPos = this.location;
-
-                // 初回移動時の起点座標を保存
-                if (self.m_CanvasPos === null) {
-                    self.m_CanvasPos = { x: currentWinPos.x, y: currentWinPos.y };
-                    return;
-                }
-
-                // 移動量（Delta）を計算
-                var deltaX = currentWinPos.x - self.m_CanvasPos.x;
-                var deltaY = currentWinPos.y - self.m_CanvasPos.y;
-
-                // ルーペの位置を更新（メイン窓が動いた分だけルーペも動かす）
-                if (self.m_Loupe !== null) {
-                    var loupePos = self.m_Loupe.GetLocation();
-                    self.m_Loupe.Locate(loupePos.x + deltaX, loupePos.y + deltaY);
-                }
-
-                // 次回計算のために現在の位置を保存
-                self.m_CanvasPos = { x: currentWinPos.x, y: currentWinPos.y };
-            }
-
-
             // カスタム・カンバスのonDraw
             self.m_Canvas.onDraw = function() {
                 var canv = this;    // m_Canvasのthis
@@ -321,57 +289,13 @@ function CViewer(pObj, pDialog, pPanelView, imageFile) {
                 g.rectPath(0, 0, canv.size.width, canv.size.height);
                 g.fillPath(whiteBrush);
 
-                var blackPen = g.newPen(g.PenType.SOLID_COLOR, [0.0, 0.0, 0.0, 1.0], 1); 
-                var myFont = ScriptUI.newFont("Arial", "BOLD", 20); 
-
                 if ( self.uiImage ) {
-
                     self.m_UIScale = getUIScale(self.m_Canvas); // UIのスケーリングを取得しておく（例: 1.25）
 
                     // 画像をビュアーのサイズにリサイズして描画
                     g.drawImage(self.uiImage, 0, 0, canv.size.width, canv.size.height);
-
-                    var zxzX =  self.mousePos.x; // マウスのローカルX座標
-                    var zxzY =  self.mousePos.y; // マウスのローカルY座標
-                    var pView   = pObj.m_Viewer;
-                    var pCanvas = pView.m_Canvas;
-                    var imageWidth   = pView.m_Image.width;      // 画像の幅
-                    var imageHeight  = pView.m_Image.height;     // 画像の高さ
-                    var canvasWidth  = pCanvas.size.width  * pView.m_UIScale;     // キャンバスの幅
-                    var canvasHeight = pCanvas.size.height * pView.m_UIScale;    // キャンバスの高さ  
-                        zxzX =  Math.floor( imageWidth  * ( self.mousePos.x / canvasWidth  ) );
-                        zxzY =  Math.floor( imageHeight * ( self.mousePos.y / canvasHeight ) );
-                    
-                    // マウス位置に応じて拡大鏡を更新
-                    if ( self.m_Loupe  !== null ) {
-                        self.m_Loupe.update(self.uiImage, imageWidth, imageHeight, pView.m_UIScale, zxzX, zxzY);
-                    }
                 }
             }
-
-            // カスタム・カンバスのmousedown
-            self.m_Canvas.addEventListener("mousedown", function(event) {
-                var Sz = "Status: Mouse Down on Button (Button: " + event.button + ")";
-
-                // event.button は左クリックで 0、中央で 1、右で 2 を返す
-                //alert(Sz);
-
-                switch (event.button) {
-                    case 0:
-                        // 左クリック
-                        self.OnPickUp(event, pObj, imageFile); // メニュー表示へ
-                        break;
-                    case 1:
-                        // 中央（ホイール）クリック
-                        break;
-                    case 2:
-                        // 右クリック
-                        self.showContextMenu(event, pObj); // メニュー表示へ
-                        break;
-                    default:
-                        break;
-                }
-            });
 
             // マウスが動いた時の処理
             self.m_Canvas.addEventListener("mousemove", function(event) {
@@ -399,18 +323,6 @@ function CViewer(pObj, pDialog, pPanelView, imageFile) {
 }
 
 
-CViewer.prototype.close = function() {
-    try {
-        var self = this;
-        if ( self.m_Loupe !== null ) {
-            self.m_Loupe.close();
-        }
-
-    } catch(e) {
-        alert( e.message );
-    }
-};
-
 /**
  * キャンバスへのオブジェクトを返す
  */
@@ -421,37 +333,6 @@ CViewer.prototype.GetCanvas = function() {
     } catch(e) {
         alert( e.message );
     }
-}
-
-CViewer.prototype.ShowLoupe= function() {
-    try {
-        var self = this;
-        if ( self.m_Loupe === null ) {
-            self.m_Loupe = new CLoupePalette();
-        }
-        self.m_Loupe.show();
-    } catch(e) {
-        alert( e.message );
-    }
-}
-
-CViewer.prototype.HideLoupe= function() {
-    try {
-        var self = this;
-        if ( self.m_Loupe !== null ) {
-            self.m_Loupe.hide();
-        }
-    } catch(e) {
-        alert( e.message );
-    }
-}
-
-CViewer.prototype.IsOpenLoupe= function(pObj) {
-    var self = this;
-    if ( self.m_Loupe !== null ) {
-        return self.m_Loupe.IsOpne();
-    }
-    return false;
 }
 
 
