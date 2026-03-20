@@ -1,5 +1,5 @@
 ﻿
-// Ver.1.0 : 2026/03/20
+// Ver.1.0 : 2026/03/20-A
 
 
 // --- グローバル関数 -----------------------------------------------------------------
@@ -15,26 +15,47 @@ function appVersion() {
 }
 
 // main関数を起動するためのスターター関数
-function runMain(main)
+function runMain(mainFilePath, mainFunc)
 {
-    // エンジンがmainでないときは、ブリッジトーク経由で実行
-    if ( $.engineName !== "main" )
+    // --- mainエンジン以外 ---
+    if ($.engineName !== "main")
     {
-        $.writeln( "ブリッジトーク経由で、main関数を実行" );
+        $.writeln( "BridgeTalkでmainエンジンに切り替えて、main関数を実行（現在: " + $.engineName + "）" );
+
         var bt = new BridgeTalk();
         bt.target = BridgeTalk.appSpecifier;
 
         bt.body =
+            '#target illustrator;\n' +
             '#targetengine "main";\n' +
-            '$.global.API = {};\n' +   // ← 強制リセット、重要
-            '$.global.API.main = ' + main + ';\n' +
-            '$.global.API.main();';
+
+            // ★ フラグトグル処理
+            'if (!$.global.__RUNMAIN_LOADED__) {\n' +
+            '    $.writeln("初回実行：evalFile実行");\n' +
+            '    $.global.__RUNMAIN_LOADED__ = true;\n' +
+            '    $.evalFile("' + mainFilePath + '");\n' +
+            '} else {\n' +
+            '    $.writeln("2回目：フラグ削除して終了");\n' +
+            '    delete $.global.__RUNMAIN_LOADED__;\n' +
+            '}';
+
+        bt.onError = function(err) {
+            alert("BridgeTalkエラー: " + err.body);
+        };
 
         bt.send();
+        return;
+    }
+
+    // --- mainエンジン ---
+    $.writeln("main関数を、mainエンジンで直接実行");
+
+    // ★ ここがポイント
+    if (typeof mainFunc === "function") {
+        mainFunc();   // ← ダイレクト実行
     } else {
-        // エンジンがmainのときは、そのまま実行
-        $.writeln( "ダイレクトに、main関数を実行" );
-        main();
+        // フォールバック（安全策）
+        $.evalFile(mainFilePath);
     }
 }
 
